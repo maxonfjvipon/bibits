@@ -17,6 +17,6 @@ There are next available options with ```seq```:
 5. Concatenate: ```seq.concatenate(new BitSequence("1"))```, the result is ```BitSequence``` that keep ```"001100010011001000110001"```
 6. Xor: ```seq.xor(new BitSequence("11"))```, the result is ```BitSequence``` that keep ```"0000000000000011"```
 7. Shift left/right by some bits: ```seq.shiftedLeftBy(2)```, the result is ```BitSequence``` that keep ```"1100010011001000"```
-8. Shift left/right cyclically by some bits: ```seq.shiftedLefyCyclicallyBy(3)```, the result is ```BitSequence``` that keep ```"1000100110010001"```
+8. Shift left/right cyclically by some bits: ```seq.shiftedLeftCyclicallyBy(3)```, the result is ```BitSequence``` that keep ```"1000100110010001"```
 
 So check this out. I'll be glad if you find some bugs or you tell me what needs to be improved or fixed.
