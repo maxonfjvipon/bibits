@@ -1,4 +1,4 @@
-package main.java.org.bits;
+package main.java.org.bibits;
 
 import java.util.ArrayList;
 
