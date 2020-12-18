@@ -2,16 +2,17 @@ package main.java.org.bibits;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Byte
  */
-public class Byte implements Bits {
+public class Byte implements Bits, Xor<Byte>, AsString {
 
     /**
      * Bits
      */
-    private final Bits _bits;
+    private final Bits origin;
 
     /**
      * ctor
@@ -20,19 +21,18 @@ public class Byte implements Bits {
      */
     public Byte(final int dec) {
         this(() -> {
-                Bit[] bits = new Bit[8];
-                int _dec = dec;
-                for (int i = 7; i >= 0; i--) {
-                    if (_dec > 0) {
-                        bits[i] = new Bit(_dec % 2 != 0);
-                        _dec /= 2;
-                        continue;
-                    }
-                    bits[i] = new Bit(false);
+            Bit[] bits = new Bit[8];
+            int _dec = dec;
+            for (int i = 7; i >= 0; i--) {
+                if (_dec > 0) {
+                    bits[i] = new Bit(_dec % 2 != 0);
+                    _dec /= 2;
+                    continue;
                 }
-                return new ArrayList<>(Arrays.asList(bits));
+                bits[i] = new Bit();
             }
-        );
+            return bits;
+        });
     }
 
     /**
@@ -42,23 +42,23 @@ public class Byte implements Bits {
      */
     public Byte(final BitSequence sequence) {
         this(() -> {
-            if (sequence.length() >= 8) {
+            Bit[] bits = new Bit[8];
+            if (sequence.length() > 8) {
                 try {
-                    return sequence.subSequence(0, 8).asBitList();
+                    bits = sequence.subSequence(0, 8).asBits();
                 } catch (Exception exception) {
-                    return sequence.asBitList();
+                    System.out.println("Something went wrong");
                 }
             } else {
-                ArrayList<Bit> bits = new ArrayList<>();
                 for (int i = 0; i < 8; i++) {
                     if (i < 8 - sequence.length()) {
-                        bits.add(new Bit(false));
+                        bits[i] = new Bit();
                         continue;
                     }
-                    bits.add(sequence.bitAt(i));
+                    bits[i] = sequence.bitAt(i);
                 }
-                return bits;
             }
+            return bits;
         });
     }
 
@@ -66,34 +66,34 @@ public class Byte implements Bits {
      * Ctor
      */
     public Byte() {
-        this(new ArrayList<>(8));
+        this(new Bit[8]);
     }
 
     /**
      * Ctor
      *
-     * @param bits ArrayList of Bits
+     * @param source List of Bits
      */
-    public Byte(final ArrayList<Bit> bits) {
-        this(() -> bits);
+    public Byte(final List<Bit> source) {
+        this(source.toArray(new Bit[0]));
     }
 
     /**
      * Ctor
      *
-     * @param bits Bits
+     * @param source Bits
      */
-    public Byte(final Bits bits) {
-        this._bits = bits;
+    public Byte(final Bit[] source) {
+        this(new BitSequence(source));
     }
 
     /**
-     * Present as bit sequence
+     * Ctor
      *
-     * @return Bit sequence string
+     * @param source Bits
      */
-    public String asBitSeqString() {
-        return this.asBitSequence().asBitSeqString();
+    public Byte(final Bits source) {
+        this.origin = source;
     }
 
     /**
@@ -104,13 +104,14 @@ public class Byte implements Bits {
     public int asDecimal() {
         int dec = 0;
         for (int i = 7; i >= 0; i--) {
-            dec += this.bitAt(i).intValue() * Math.pow(2, 7 - i);
+            dec += this.bitAt(i).value() * Math.pow(2, 7 - i);
         }
         return dec;
     }
 
     /**
      * Present as char
+     *
      * @return Char
      */
     public char asChar() {
@@ -118,35 +119,36 @@ public class Byte implements Bits {
     }
 
     /**
-     * Present as bit sequence
-     * @return {@link BitSequence}
-     */
-    public BitSequence asBitSequence() {
-        return new BitSequence(_bits);
-    }
-
-    public Bit bitAt(int index) {
-        return this.asBitList().get(index);
-    }
-
-    /**
-     * XOR
+     * Get bit at {@code index}
      *
-     * @param other 2nd argument
-     * @return result of xor as Binary
+     * @param index Index
+     * @return {@link Bit} at {@code index}
      */
-    public Byte xor(Byte other) {
-        return new Byte(() -> {
-            ArrayList<Bit> result = new ArrayList<>();
-            for (int i = 0; i < 8; i++) {
-                result.add(this.bitAt(i).xor(other.bitAt(i)));
-            }
-            return result;
-        });
+    public Bit bitAt(int index) {
+        return this.asBits()[index];
     }
 
     @Override
-    public ArrayList<Bit> asBitList() {
-        return _bits.asBitList();
+    public Bit[] asBits() {
+        return origin.asBits();
+    }
+
+    @Override
+    public Byte xor(Byte other) {
+        Bit[] xored = new Bit[8];
+        for (int i = 0; i < 8; i++) {
+            xored[i] = this.bitAt(i).xor(other.bitAt(i));
+        }
+        return new Byte(xored);
+    }
+
+    @Override
+    public String asString() {
+        Bit[] bits = this.origin.asBits();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 8; i++) {
+            sb.append(bits[i].asString());
+        }
+        return sb.toString();
     }
 }

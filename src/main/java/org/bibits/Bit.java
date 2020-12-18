@@ -3,12 +3,37 @@ package main.java.org.bibits;
 /**
  * Bit
  */
-public class Bit {
+public class Bit implements Xor<Bit>, AsString {
 
     /**
      * Value
      */
     private final boolean value;
+
+    /**
+     * Ctor
+     *
+     * @param other Other bit
+     */
+    public Bit(Bit other) {
+        this(other.value);
+    }
+
+    /**
+     * Ctor
+     */
+    public Bit() {
+        this(false);
+    }
+
+    /**
+     * Ctor
+     *
+     * @param value Int value (1 or 0)
+     */
+    public Bit(int value) {
+        this(value > 0);
+    }
 
     /**
      * Ctor
@@ -20,45 +45,20 @@ public class Bit {
     }
 
     /**
-     * Ctor
-     *
-     * @param other Other bit
+     * Present as int
+     * @return 1 if {@code value} is true, else 0
      */
-    public Bit(Bit other) {
-        this.value = other.value;
+    public int value() {
+        return value ? 1 : 0;
     }
 
-    /**
-     * XOR
-     *
-     * @param other The 2nd argument
-     * @return Result of XOR({@code this}, {@code other})
-     */
+    @Override
     public Bit xor(Bit other) {
         return new Bit(value ^ other.value);
     }
 
-    /**
-     * Present as String
-     * @return "1" if {@code value} is true, else "0"
-     */
+    @Override
     public String asString() {
         return value ? "1" : "0";
-    }
-
-    /**
-     * Present as int
-     * @return 1 if {@code value} is true, else 0
-     */
-    public int intValue() {
-        return value ? 1 : 0;
-    }
-
-    /**
-     * Get bool value
-     * @return Bool value
-     */
-    public boolean boolValue() {
-        return value;
     }
 }

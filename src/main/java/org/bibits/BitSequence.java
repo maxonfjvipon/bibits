@@ -6,18 +6,23 @@ import java.util.*;
 /**
  * Bit Sequence
  */
-public class BitSequence implements Bits {
+public class BitSequence implements Bits, Xor<BitSequence>, AsString {
 
     /**
      * Bits
      */
-    private final Bits _bits;
+    private final Bits origin;
+
+    /**
+     * Length
+     */
+    private final int length;
 
     /**
      * Ctor
      */
     public BitSequence() {
-        this(ArrayList::new);
+        this(new Bit[0]);
     }
 
     /**
@@ -26,7 +31,7 @@ public class BitSequence implements Bits {
      * @param bits Bits Array
      */
     public BitSequence(final Bit... bits) {
-        this(new ArrayList<>(Arrays.asList(bits)));
+        this(() -> bits, bits.length);
     }
 
     /**
@@ -36,12 +41,15 @@ public class BitSequence implements Bits {
      */
     public BitSequence(final Byte... bytes) {
         this(() -> {
-            ArrayList<Bit> bits = new ArrayList<>();
+            Bit[] bits = new Bit[bytes.length * 8];
+            int index = 0;
             for (Byte _byte : bytes) {
-                bits.addAll(_byte.asBitList());
+                for (Bit bit : _byte.asBits()) {
+                    bits[index++] = bit;
+                }
             }
             return bits;
-        });
+        }, bytes.length * 8);
     }
 
     /**
@@ -50,7 +58,7 @@ public class BitSequence implements Bits {
      * @param bits ArrayList of Bits
      */
     public BitSequence(final ArrayList<Bit> bits) {
-        this(() -> bits);
+        this(bits.toArray(new Bit[0]));
     }
 
     /**
@@ -60,23 +68,50 @@ public class BitSequence implements Bits {
      */
     public BitSequence(final CharSequence seq) {
         this(() -> {
-            ArrayList<Bit> bits = new ArrayList<>();
+            Bit[] bits = new Bit[seq.length() * 8];
+            int index = 0;
             for (Character ch : seq.toString().toCharArray()) {
-                Byte _byte = new Byte(ch);
-                bits.addAll(_byte.asBitList());
+                Bit[] chBits = new Byte(ch).asBits();
+                for (int i = 0; i < 8; i++) {
+                    bits[index++] = chBits[i];
+                }
             }
-            System.out.println("ctor");
             return bits;
-        });
+        }, seq.length() * 8);
     }
 
     /**
      * Ctor
      *
-     * @param bits {@link Bits}
+     * @param source {@link BigInteger}
      */
-    public BitSequence(final Bits bits) {
-        this._bits = bits;
+    public BitSequence(final BigInteger source) {
+        this(() -> {
+            int length = source.bitLength() + (8 - source.bitLength() % 8);
+            Bit[] bits = new Bit[length];
+            BigInteger bi = source;
+            BigInteger two = new BigInteger("2");
+            for (int i = length - 1; i >= 0; i--) {
+                if (bi.compareTo(BigInteger.ZERO) > 0) {
+                    bits[i] = new Bit(bi.mod(two).compareTo(BigInteger.ZERO) != 0);
+                    bi = bi.divide(two);
+                    continue;
+                }
+                bits[i] = new Bit(false);
+            }
+            return bits;
+        }, source.bitLength() + (8 - source.bitLength() % 8));
+    }
+
+    /**
+     * Ctor
+     *
+     * @param bits   Bits
+     * @param length Length
+     */
+    private BitSequence(final Bits bits, final int length) {
+        this.origin = bits;
+        this.length = length;
     }
 
     /**
@@ -91,9 +126,11 @@ public class BitSequence implements Bits {
         if (to < from) {
             throw new Exception("Can't get substring from " + from + " to " + to);
         }
-        ArrayList<Bit> subs = new ArrayList<>();
+        Bit[] subs = new Bit[to - from];
+        Bit[] orig = this.asBits();
+        int index = 0;
         for (int i = from; i < to; i++) {
-            subs.add(this.bitAt(i));
+            subs[index++] = orig[i];
         }
         return new BitSequence(subs);
     }
@@ -105,7 +142,7 @@ public class BitSequence implements Bits {
      * @return Bit at {@code index}
      */
     public Bit bitAt(int index) {
-        return this.asBitList().get(index);
+        return this.asBits()[index];
     }
 
     /**
@@ -114,7 +151,7 @@ public class BitSequence implements Bits {
      * @return Length of {@code bits}
      */
     public int length() {
-        return this.asBitList().size();
+        return this.length;
     }
 
     /**
@@ -125,12 +162,14 @@ public class BitSequence implements Bits {
      * @throws Exception If length of arguments aren't equal
      */
     public BitSequence xor(BitSequence other) throws Exception {
-        if (this.length() != other.length()) {
+        if (this.length != other.length) {
             throw new Exception("XOR requires the same lengths of sequences");
         }
-        ArrayList<Bit> bits = new ArrayList<>();
-        for (int i = 0; i < this.length(); i++) {
-            bits.add(this.bitAt(i).xor(other.bitAt(i)));
+        Bit[] bits = new Bit[this.length];
+        Bit[] orig = this.asBits();
+        Bit[] oth = other.asBits();
+        for (int i = 0; i < this.length; i++) {
+            bits[i] = orig[i].xor(oth[i]);
         }
         return new BitSequence(bits);
     }
@@ -145,7 +184,7 @@ public class BitSequence implements Bits {
         BitSequence first, second, result;
         try {
             first = this.subSequence(0, bitCount);
-            second = this.subSequence(bitCount, this.length());
+            second = this.subSequence(bitCount, this.length);
             result = second.concatenate(first);
         } catch (Exception exception) {
             result = new BitSequence();
@@ -162,7 +201,7 @@ public class BitSequence implements Bits {
     public BitSequence shiftedLeftBy(int bitCount) {
         BitSequence second;
         try {
-            second = this.subSequence(bitCount, this.length());
+            second = this.subSequence(bitCount, this.length);
         } catch (Exception exception) {
             second = new BitSequence();
         }
@@ -183,8 +222,8 @@ public class BitSequence implements Bits {
     public BitSequence shiftedRightCyclicallyBy(int bitCount) {
         BitSequence first, second, result;
         try {
-            first = this.subSequence(0, this.length() - bitCount);
-            second = this.subSequence(this.length() - bitCount, this.length());
+            first = this.subSequence(0, this.length - bitCount);
+            second = this.subSequence(this.length - bitCount, this.length);
             result = second.concatenate(first);
         } catch (Exception exception) {
             result = new BitSequence();
@@ -201,7 +240,7 @@ public class BitSequence implements Bits {
     public BitSequence shiftedRightBy(int bitCount) {
         BitSequence first;
         try {
-            first = this.subSequence(0, this.length() - bitCount);
+            first = this.subSequence(0, this.length - bitCount);
         } catch (Exception exception) {
             first = new BitSequence();
         }
@@ -219,7 +258,7 @@ public class BitSequence implements Bits {
      * @return true if length of sequence is 0
      */
     public boolean isEmpty() {
-        return this.length() == 0;
+        return this.length == 0;
     }
 
     /**
@@ -229,9 +268,12 @@ public class BitSequence implements Bits {
      * @return The result of concatenation
      */
     public BitSequence concatenate(BitSequence other) {
-        BitSequence concatenated = new BitSequence(this.asBitList());
-        concatenated.asBitList().addAll(other.asBitList());
-        return concatenated;
+        Bit[] concatenated = new Bit[this.length + other.length];
+        Bit[] orig = this.asBits();
+        Bit[] oth = this.asBits();
+        System.arraycopy(orig, 0, concatenated, 0, orig.length);
+        System.arraycopy(oth, 0, concatenated, orig.length, oth.length);
+        return new BitSequence(concatenated);
     }
 
     /**
@@ -243,25 +285,12 @@ public class BitSequence implements Bits {
         BigInteger result = BigInteger.ZERO;
         BigInteger two = new BigInteger("2");
         BigInteger biFromBit;
-        int exp = this.length() - 1;
-        for (Bit bit : this.asBitList()) {
-            biFromBit = bit.intValue() == 1 ? BigInteger.ONE : BigInteger.ZERO;
+        int exp = this.length - 1;
+        for (Bit bit : this.asBits()) {
+            biFromBit = bit.value() == 1 ? BigInteger.ONE : BigInteger.ZERO;
             result = result.add(biFromBit.multiply(two.pow(exp--)));
         }
         return result;
-    }
-
-    /**
-     * Present as string of bit sequence (like "101010100100...)
-     *
-     * @return Bit sequence string
-     */
-    public String asBitSeqString() {
-        StringBuilder sb = new StringBuilder();
-        for (Bit bit : this.asBitList()) {
-            sb.append(bit.asString());
-        }
-        return sb.toString();
     }
 
     /**
@@ -271,18 +300,27 @@ public class BitSequence implements Bits {
      * @throws Exception If length of sequence (mod 8) != 0, because length of {@link Byte} must be 8
      */
     public String asCharSequence() throws Exception {
-        if (this.length() % 8 != 0) {
-            throw new Exception("Cannot turn into char seq");
+        if (this.length % 8 != 0) {
+            throw new Exception("Cannot turn into char sequence");
         }
         StringBuilder result = new StringBuilder();
-        for (int i = 0; i < this.length() / 8; i++) {
-            result.append(new Byte(subSequence(i * 8, i * 8 + 8)).asChar());
+        for (int i = 0; i < this.length / 8; i++) {
+            result.append(new Byte(this.subSequence(i * 8, i * 8 + 8)).asChar());
         }
         return result.toString();
     }
 
     @Override
-    public ArrayList<Bit> asBitList() {
-        return this._bits.asBitList();
+    public Bit[] asBits() {
+        return this.origin.asBits();
+    }
+
+    @Override
+    public String asString() {
+        StringBuilder sb = new StringBuilder();
+        for (Bit bit : this.asBits()) {
+            sb.append(bit.asString());
+        }
+        return sb.toString();
     }
 }
