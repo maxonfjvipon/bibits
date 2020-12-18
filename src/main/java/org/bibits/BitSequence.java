@@ -270,7 +270,7 @@ public class BitSequence implements Bits, Xor<BitSequence>, AsString {
     public BitSequence concatenate(BitSequence other) {
         Bit[] concatenated = new Bit[this.length + other.length];
         Bit[] orig = this.asBits();
-        Bit[] oth = this.asBits();
+        Bit[] oth = other.asBits();
         System.arraycopy(orig, 0, concatenated, 0, orig.length);
         System.arraycopy(oth, 0, concatenated, orig.length, oth.length);
         return new BitSequence(concatenated);
